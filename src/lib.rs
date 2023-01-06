@@ -1,4 +1,5 @@
 pub mod measurement_matrix;
+pub mod sensing_matrix;
 pub mod transform_matrix;
 
 pub struct Model<const M: usize, const N: usize> {}
