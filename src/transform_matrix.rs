@@ -4,6 +4,8 @@ use nalgebra::SMatrix;
 use rustdct::DctPlanner;
 use rustfft::FftPlanner;
 
+use crate::sensing_matrix::SensingMatrix;
+
 pub struct TransformMatrix<const N: usize> {
     matrix: SMatrix<f64, N, N>,
 }
@@ -45,6 +47,12 @@ impl<const N: usize> TransformMatrix<N> {
         matrix = matrix.div(f64::sqrt(N as f64 / 2.0));
 
         Self { matrix }
+    }
+}
+
+impl<const N: usize> AsRef<SMatrix<f64, N, N>> for TransformMatrix<N> {
+    fn as_ref(&self) -> &SMatrix<f64, N, N> {
+        &self.matrix
     }
 }
 

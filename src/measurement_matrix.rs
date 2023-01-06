@@ -22,6 +22,12 @@ impl<const M: usize, const N: usize> MeasurementMatrix<M, N> {
     }
 }
 
+impl<const M: usize, const N: usize> AsRef<SMatrix<f64, M, N>> for MeasurementMatrix<M, N> {
+    fn as_ref(&self) -> &SMatrix<f64, M, N> {
+        &self.matrix
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::MeasurementMatrix;
