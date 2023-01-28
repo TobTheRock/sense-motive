@@ -1,4 +1,6 @@
-use nalgebra::SMatrix;
+use std::ops::Mul;
+
+use nalgebra::{SMatrix, SVector};
 use rand::{distributions::Bernoulli, prelude::Distribution};
 
 pub struct MeasurementMatrix<const M: usize, const N: usize> {
@@ -27,6 +29,14 @@ impl<const M: usize, const N: usize> AsRef<SMatrix<f64, M, N>> for MeasurementMa
         &self.matrix
     }
 }
+
+// impl<const M: usize, const N: usize> Mul<&SVector<f64, N>> for MeasurementMatrix<M, N> {
+//     type Output = SVector<f64, M>;
+
+//     fn mul(self, rhs: &SVector<f64, N>) -> Self::Output {
+//         self.matrix * rhs
+//     }
+// }
 
 #[cfg(test)]
 mod test {
