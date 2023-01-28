@@ -1,19 +1,11 @@
 use std::ops::Mul;
 
-use nalgebra::SMatrix;
+use nalgebra::DMatrix;
 
 use crate::{measurement_matrix::MeasurementMatrix, transform_matrix::TransformMatrix};
 
 pub struct SensingMatrix<const M: usize, const N: usize> {
-    matrix: SMatrix<f64, M, N>,
-}
-
-impl<const M: usize, const N: usize> From<MeasurementMatrix<M, N>> for SensingMatrix<M, N> {
-    fn from(matrix: MeasurementMatrix<M, N>) -> Self {
-        Self {
-            matrix: *matrix.as_ref(),
-        }
-    }
+    matrix: DMatrix<f64>,
 }
 
 impl<const M: usize, const N: usize> Mul<TransformMatrix<N>> for MeasurementMatrix<M, N> {
@@ -25,8 +17,8 @@ impl<const M: usize, const N: usize> Mul<TransformMatrix<N>> for MeasurementMatr
     }
 }
 
-impl<const M: usize, const N: usize> AsRef<SMatrix<f64, M, N>> for SensingMatrix<M, N> {
-    fn as_ref(&self) -> &SMatrix<f64, M, N> {
+impl<const M: usize, const N: usize> AsRef<DMatrix<f64>> for SensingMatrix<M, N> {
+    fn as_ref(&self) -> &DMatrix<f64> {
         &self.matrix
     }
 }

@@ -1,13 +1,13 @@
 use std::ops::Div;
 
-use nalgebra::SMatrix;
+use nalgebra::DMatrix;
 use rustdct::DctPlanner;
 use rustfft::FftPlanner;
 
 use crate::sensing_matrix::SensingMatrix;
 
 pub struct TransformMatrix<const N: usize> {
-    matrix: SMatrix<f64, N, N>,
+    matrix: DMatrix<f64>,
 }
 
 impl<const N: usize> TransformMatrix<N> {
@@ -18,7 +18,7 @@ impl<const N: usize> TransformMatrix<N> {
         let dct = planner.plan_dct2(N);
         let mut scratch = vec![0.0; dct.get_scratch_len()];
 
-        let mut matrix = SMatrix::<f64, N, N>::identity();
+        let mut matrix = DMatrix::<f64>::identity(N, N);
         for mut col in matrix.column_iter_mut() {
             dct.process_dct2_with_scratch(col.as_mut_slice(), &mut scratch);
         }
@@ -38,7 +38,7 @@ impl<const N: usize> TransformMatrix<N> {
         let dct = planner.plan_dct3(N);
         let mut scratch = vec![0.0; dct.get_scratch_len()];
 
-        let mut matrix = SMatrix::<f64, N, N>::identity();
+        let mut matrix = DMatrix::<f64>::identity(N, N);
         for mut col in matrix.column_iter_mut() {
             dct.process_dct3_with_scratch(col.as_mut_slice(), &mut scratch);
         }
@@ -50,8 +50,8 @@ impl<const N: usize> TransformMatrix<N> {
     }
 }
 
-impl<const N: usize> AsRef<SMatrix<f64, N, N>> for TransformMatrix<N> {
-    fn as_ref(&self) -> &SMatrix<f64, N, N> {
+impl<const N: usize> AsRef<DMatrix<f64>> for TransformMatrix<N> {
+    fn as_ref(&self) -> &DMatrix<f64> {
         &self.matrix
     }
 }
@@ -59,7 +59,7 @@ impl<const N: usize> AsRef<SMatrix<f64, N, N>> for TransformMatrix<N> {
 #[cfg(test)]
 mod test {
     use approx::{assert_relative_eq, relative_eq};
-    use nalgebra::{SMatrix, SVector};
+    use nalgebra::{DMatrix, DVector};
 
     use super::TransformMatrix;
 
@@ -73,13 +73,13 @@ mod test {
         let inv = TransformMatrix::<4>::dct1d_inverse();
         println!("DCT1D inverse {}", inv.matrix);
 
-        let x = SVector::<f64, 4>::from_fn(|i, _| i as f64);
-        let x_trans = t.matrix * x;
-        let x2 = inv.matrix * x_trans;
+        let x = DVector::<f64>::from_fn(4, |i, _| i as f64);
+        let x_trans = &t.matrix * &x;
+        let x2 = &inv.matrix * x_trans;
         assert_relative_eq!(x, x2, epsilon = TOLERANCE);
 
         assert_relative_eq!(
-            SMatrix::<f64, 4, 4>::identity(),
+            DMatrix::<f64>::identity(4, 4),
             inv.matrix * t.matrix,
             epsilon = TOLERANCE
         );

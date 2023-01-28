@@ -1,10 +1,10 @@
 use std::ops::Mul;
 
-use nalgebra::{SMatrix, SVector};
+use nalgebra::{DMatrix, DVector};
 use rand::{distributions::Bernoulli, prelude::Distribution};
 
 pub struct MeasurementMatrix<const M: usize, const N: usize> {
-    matrix: SMatrix<f64, M, N>,
+    matrix: DMatrix<f64>,
 }
 
 impl<const M: usize, const N: usize> MeasurementMatrix<M, N> {
@@ -19,21 +19,21 @@ impl<const M: usize, const N: usize> MeasurementMatrix<M, N> {
                 .sample_iter(rng)
                 .map(|v| if v { norm } else { -norm });
         Self {
-            matrix: SMatrix::from_fn(|_, _| dist.next().unwrap()),
+            matrix: DMatrix::from_fn(M, N, |_, _| dist.next().unwrap()),
         }
     }
 }
 
-impl<const M: usize, const N: usize> AsRef<SMatrix<f64, M, N>> for MeasurementMatrix<M, N> {
-    fn as_ref(&self) -> &SMatrix<f64, M, N> {
+impl<const M: usize, const N: usize> AsRef<DMatrix<f64>> for MeasurementMatrix<M, N> {
+    fn as_ref(&self) -> &DMatrix<f64> {
         &self.matrix
     }
 }
 
-// impl<const M: usize, const N: usize> Mul<&SVector<f64, N>> for MeasurementMatrix<M, N> {
-//     type Output = SVector<f64, M>;
+// impl<const M: usize, const N: usize> Mul<&DVector<f64, N>> for MeasurementMatrix<M, N> {
+//     type Output = DVector<f64, M>;
 
-//     fn mul(self, rhs: &SVector<f64, N>) -> Self::Output {
+//     fn mul(self, rhs: &DVector<f64, N>) -> Self::Output {
 //         self.matrix * rhs
 //     }
 // }

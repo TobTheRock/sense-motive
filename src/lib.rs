@@ -1,5 +1,5 @@
 use measurement_matrix::MeasurementMatrix;
-use nalgebra::{SVector, SVectorSlice};
+use nalgebra::{DVector, DVectorSlice};
 
 pub mod measurement_matrix;
 pub mod sensing_matrix;
@@ -38,9 +38,8 @@ impl<const M: usize, const N: usize> Model<M, N> {
     {
         let m = MeasurementMatrix::<M, N>::new_bernoulli();
         // TODO padding
-        let uncompressed = SVectorSlice::from_slice(input.as_ref());
-        let compressed: [f64; M] = (m.as_ref() * uncompressed).into();
-        compressed.to_vec()
+        let uncompressed = DVectorSlice::from_slice(input.as_ref(), N);
+        (m.as_ref() * uncompressed).data.into()
     }
 
     pub fn decompress(&self, input: &Vec<f64>) -> Vec<f64> {
