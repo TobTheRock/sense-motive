@@ -22,3 +22,10 @@ impl<const M: usize, const N: usize> AsRef<DMatrix<f64>> for SensingMatrix<M, N>
         &self.matrix
     }
 }
+
+impl<const M: usize, const N: usize> From<DMatrix<f64>> for SensingMatrix<M, N> {
+    fn from(matrix: DMatrix<f64>) -> Self {
+        // TODO assert dimensions, own type def for Matrix with VecStorage and fixed! rows, columns
+        Self { matrix }
+    }
+}
