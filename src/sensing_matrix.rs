@@ -8,12 +8,11 @@ pub struct SensingMatrix<const M: usize, const N: usize> {
     matrix: DMatrix<f64>,
 }
 
-impl<const M: usize, const N: usize> Mul<TransformMatrix<N>> for MeasurementMatrix<M, N> {
-    type Output = SensingMatrix<M, N>;
-
-    fn mul(self, rhs: TransformMatrix<N>) -> Self::Output {
-        let matrix = self.as_ref() * rhs.as_ref();
-        SensingMatrix { matrix }
+impl<const M: usize, const N: usize> SensingMatrix<M, N> {
+    pub fn from(measurement: &MeasurementMatrix<M, N>, transfrom: &TransformMatrix<N>) -> Self {
+        Self {
+            matrix: measurement.as_ref() * transfrom.as_ref(),
+        }
     }
 }
 

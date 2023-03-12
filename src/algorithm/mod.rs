@@ -1,13 +1,12 @@
-mod matching_pursuit;
+pub mod matching_pursuit;
 
 use crate::sensing_matrix::SensingMatrix;
-use nalgebra::DVector;
 
-pub trait Algorithm {
-    fn solve<const M: usize, const N: usize>(
+pub trait Algorithm<const M: usize, const N: usize> {
+    fn solve(
         &self,
         // TODO: type for compressed signal/ sparse signal
-        y: &DVector<f64>,
+        y: &nalgebra::DVectorView<f64>,
         sensing_matrix: &SensingMatrix<M, N>,
-    ) -> DVector<f64>;
+    ) -> nalgebra::DVector<f64>;
 }

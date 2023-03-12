@@ -6,17 +6,24 @@ use super::Algorithm;
 
 pub struct MatchingPursuit {
     max_iter: usize,
+    // TODO rename
     epsilon: f64,
 }
 
-impl Algorithm for MatchingPursuit {
-    fn solve<const M: usize, const N: usize>(
+impl MatchingPursuit {
+    pub fn with_parameters(max_iter: usize, epsilon: f64) -> Box<MatchingPursuit> {
+        Box::new(MatchingPursuit { max_iter, epsilon })
+    }
+}
+
+impl<const M: usize, const N: usize> Algorithm<M,N> for MatchingPursuit {
+    fn solve(
         &self,
-        y: &nalgebra::DVector<f64>,
+        y: &nalgebra::DVectorView<f64>,
         sensing_matrix: &SensingMatrix<M, N>,
     ) -> nalgebra::DVector<f64> {
         let mut sparse = DVector::zeros(N);
-        let mut residual = y.clone();
+        let mut residual = y.clone_owned();
 
         for _ in 0..self.max_iter {
             let inner_products = sensing_matrix.as_ref().tr_mul(&residual);
@@ -34,7 +41,8 @@ impl Algorithm for MatchingPursuit {
 
 #[cfg(test)]
 mod test {
-    use nalgebra::{dmatrix, dvector, DVector};
+    use nalgebra::{dmatrix, dvector, DVectorView};
+    use rustdct::num_traits::sign;
 
     use crate::{algorithm::Algorithm, sensing_matrix::SensingMatrix};
 
@@ -53,7 +61,7 @@ mod test {
             epsilon: 0.1,
         };
 
-        let sparse = algo.solve::<2, 3>(&signal, &matrix);
+        let sparse = Algorithm::<2,3>::solve(&algo, &signal.column(0), &matrix);
         println!("{}", sparse);
         // TODO expectation
 
