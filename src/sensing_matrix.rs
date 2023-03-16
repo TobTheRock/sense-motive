@@ -11,7 +11,8 @@ pub struct SensingMatrix<const M: usize, const N: usize> {
 impl<const M: usize, const N: usize> SensingMatrix<M, N> {
     pub fn from(measurement: &MeasurementMatrix<M, N>, transfrom: &TransformMatrix<N>) -> Self {
         Self {
-            matrix: measurement.as_ref() * transfrom.as_ref(),
+            matrix: measurement.as_ref().clone(),
+            // matrix: measurement.as_ref() * transfrom.as_ref(),
         }
     }
 }

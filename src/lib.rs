@@ -65,6 +65,7 @@ impl<const M: usize, const N: usize> Model<M, N> {
 
         let sparse = self.algorithim.solve(&compressed, sensing_matrix);
 
-        (self.transform.as_ref() * sparse).data.into()
+        // (self.transform.as_ref() * sparse).data.into()
+        sparse.data.into()
     }
 }
