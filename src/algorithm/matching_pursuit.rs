@@ -59,11 +59,11 @@ mod test {
     #[test]
     fn selects_best_matching_column() {
         let sensing_matrix = dmatrix![
-            1.0, 0.0, 0.0, ONE_THIRD;
-            0.0, 1.0, 0.0, ONE_THIRD;
-            0.0, 0.0, 1.0, ONE_THIRD;
+            1.0, 0.0            , 0.0, ONE_THIRD.sqrt();
+            0.0, ONE_HALF.sqrt(), 0.0, ONE_THIRD.sqrt();
+            0.0, ONE_HALF.sqrt(), 1.0, ONE_THIRD.sqrt();
         ];
-        // TODO SensingMatrix calss should do the normalization maybe (columns need to be normalized)
+        // TODO SensingMatrix calss should do the normalization maybe (columns need to be normalized, so that l2(column)=1)
 
         let expected = dvector![0.0, 1.0, 0.0, 0.0];
         let compressed = &sensing_matrix * &expected;
@@ -84,20 +84,26 @@ mod test {
         // only one atom/column may match and the residual energy should be 1.5
         let sensing_matrix = dmatrix![
             0.0, 0.0, 0.0, 0.0;
-            ONE_HALF, 0.0, 0.0, 0.0;
-            ONE_HALF, 0.0, 0.0, 0.0;
+            0.0, 0.0, 0.0, 0.0;
+            1.0, 0.0, 0.0, 0.0;
         ];
-
         let compressed = dvector![1.0, 1.0, 1.0];
-
+        let expected_tolerance = 2.0_f64.sqrt();
         let algorithm = MatchingPursuit {
             max_iter: 10,
-            tolerance: 1.1,
+            tolerance: expected_tolerance + 0.1,
         };
 
-        let decompressed =
-            Algorithm::<3, 4>::solve(&algorithm, &compressed.column(0), &sensing_matrix.into());
-        assert_eq!(decompressed, dvector![1.5, 0.0, 0.0, 0.0]);
+        let decompressed = Algorithm::<3, 4>::solve(
+            &algorithm,
+            &compressed.column(0),
+            &sensing_matrix.clone().into(),
+        );
+
+        assert_eq!(decompressed, dvector![1.0, 0.0, 0.0, 0.0]);
+
+        let residual = compressed - sensing_matrix * decompressed;
+        assert_relative_eq!(residual.norm(), expected_tolerance);
         // TODO statistics for algorithms?
     }
 }
