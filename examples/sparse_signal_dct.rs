@@ -1,10 +1,12 @@
 use std::f64::consts::PI;
 
 use plotly::{common::Mode, Plot, Scatter};
+use rand::{distributions::Uniform, Rng};
 use sense_motive::{Model, ModelBuilder, Transformation};
 
-const N: usize = 16;
-const M: usize = 8;
+const N: usize = 256;
+const M: usize = 64;
+const K: usize = 12;
 
 const TRANSFORM: Transformation = Transformation::None;
 
@@ -15,7 +17,7 @@ fn main() {
     // model.sensing_matrix().transform_matrix(); // TODO add enums to select algorithm sensing matrix etc.
 
     // let original = generate_signal(&[0.25, 1.0]);
-    let original = generate_sparse_signal(&[1, 8]);
+    let original = generate_sparse_signal(K);
     let compressed = model.compress(&original);
     let decompressed = model.decompress(&compressed);
 
@@ -29,14 +31,16 @@ fn main() {
     let trace = Scatter::new((0..N - 1).collect(), decompressed.clone()).mode(Mode::Lines);
     plot.add_trace(trace);
 
+    println!("Error {}", error_l2(&original, &decompressed));
     plot.show();
+}
 
-    let error: f64 = original
+fn error_l2(original: &Vec<f64>, decompressed: &Vec<f64>) -> f64 {
+    original
         .iter()
         .zip(decompressed.iter())
         .map(|(a, b)| (a - b).powi(2))
-        .sum();
-    println!("Error {}", error);
+        .sum()
 }
 
 // TODO amplitudes
@@ -53,11 +57,17 @@ fn generate_signal(frequencies: &[f64]) -> Vec<f64> {
     signal
 }
 
-fn generate_sparse_signal(indices: &[usize]) -> Vec<f64> {
-    let mut signal = vec![0.0; N];
+fn generate_sparse_signal(sparsity: usize) -> Vec<f64> {
+    let indices = rand::thread_rng()
+        .sample_iter(Uniform::new(0, N))
+        .take(sparsity);
+    let amplitudes = rand::thread_rng()
+        .sample_iter(Uniform::new(0.0, 1.0))
+        .take(sparsity);
 
-    for &i in indices {
-        signal[i] = 1.0;
+    let mut signal = vec![0.0; N];
+    for (i, a) in indices.zip(amplitudes) {
+        signal[i] = a;
     }
 
     signal
