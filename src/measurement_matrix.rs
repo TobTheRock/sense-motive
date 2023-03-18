@@ -11,7 +11,7 @@ impl<const M: usize, const N: usize> MeasurementMatrix<M, N> {
     pub fn new_bernoulli() -> Self {
         // TODO make this injectable
         let rng = rand::thread_rng();
-        let norm = 1.0 / (M as f64);
+        let norm = 1.0 / ((M as f64).sqrt());
         let mut dist =
             Bernoulli::new(0.5)
                 .unwrap()
