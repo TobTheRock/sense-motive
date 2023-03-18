@@ -1,15 +1,17 @@
 use std::f64::consts::PI;
 
 use plotly::{common::Mode, Plot, Scatter};
-use sense_motive::Model;
+use sense_motive::{Model, ModelBuilder, Transformation};
 
 const N: usize = 16;
 const M: usize = 8;
 
-// const N_
+const TRANSFORM: Transformation = Transformation::None;
 
 fn main() {
-    let mut model = Model::<M, N>::new();
+    let model = ModelBuilder::new()
+        .with_transformation(TRANSFORM)
+        .build::<M, N>();
     // model.sensing_matrix().transform_matrix(); // TODO add enums to select algorithm sensing matrix etc.
 
     // let original = generate_signal(&[0.25, 1.0]);

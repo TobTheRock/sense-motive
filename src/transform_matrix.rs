@@ -2,15 +2,35 @@ use std::ops::Div;
 
 use nalgebra::DMatrix;
 use rustdct::DctPlanner;
-use rustfft::FftPlanner;
 
-use crate::sensing_matrix::SensingMatrix;
+#[derive(Clone, Copy)]
+pub enum Transformation {
+    None,
+    Dct1dInverse,
+}
+
+impl<const N: usize> Into<TransformMatrix<N>> for Transformation {
+    fn into(self) -> TransformMatrix<N> {
+        match self {
+            Transformation::None => TransformMatrix::none(),
+            Transformation::Dct1dInverse => TransformMatrix::dct1d_inverse(),
+        }
+    }
+}
 
 pub struct TransformMatrix<const N: usize> {
     matrix: DMatrix<f64>,
 }
 
 impl<const N: usize> TransformMatrix<N> {
+    pub fn none() -> Self {
+        Self {
+            // TODO: we actually can skip the calculation in this case, to be optimized
+            // Nonethe less it make sense for other cases to store the transform matrix to be faster when decompressing
+            matrix: DMatrix::identity(N, N),
+        }
+    }
+
     // DCT 2, 1D
     pub fn dct1d() -> Self {
         // TODO reuse planner
