@@ -22,7 +22,7 @@ impl<const M: usize, const N: usize> Algorithm<M, N> for MatchingPursuit {
     fn solve(
         &self,
         y: &nalgebra::DVectorView<f64>,
-        sensing_matrix: &SensingMatrix<M, N>,
+        sensing_matrix: &SensingMatrix,
     ) -> nalgebra::DVector<f64> {
         let mut sparse = DVector::zeros(N);
         let mut residual = y.clone_owned();

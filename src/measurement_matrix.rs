@@ -1,5 +1,3 @@
-use std::ops::Mul;
-
 use nalgebra::{DMatrix, DVector};
 use rand::{distributions::Bernoulli, prelude::Distribution};
 
@@ -28,14 +26,6 @@ impl<const M: usize, const N: usize> AsRef<DMatrix<f64>> for MeasurementMatrix<M
         &self.matrix
     }
 }
-
-// impl<const M: usize, const N: usize> Mul<&DVector<f64, N>> for MeasurementMatrix<M, N> {
-//     type Output = DVector<f64, M>;
-
-//     fn mul(self, rhs: &DVector<f64, N>) -> Self::Output {
-//         self.matrix * rhs
-//     }
-// }
 
 #[cfg(test)]
 mod test {

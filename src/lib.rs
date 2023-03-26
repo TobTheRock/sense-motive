@@ -26,7 +26,7 @@ pub struct Model<const M: usize, const N: usize> {
     algorithim: Box<dyn Algorithm<M, N>>,
     measurement_matrix: MeasurementMatrix<M, N>,
     transform: TransformMatrix<N>,
-    sensing_matrix: SensingMatrix<M, N>,
+    sensing_matrix: SensingMatrix,
 }
 
 impl ModelBuilder {

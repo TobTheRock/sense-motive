@@ -7,6 +7,6 @@ pub trait Algorithm<const M: usize, const N: usize> {
         &self,
         // TODO: type for compressed signal/ sparse signal
         y: &nalgebra::DVectorView<f64>,
-        sensing_matrix: &SensingMatrix<M, N>,
+        sensing_matrix: &SensingMatrix,
     ) -> nalgebra::DVector<f64>;
 }
