@@ -1,106 +1,95 @@
 use std::ops::Div;
 
-use nalgebra::DMatrix;
+use nalgebra::{dimension, DMatrix};
 use rustdct::DctPlanner;
+
+use crate::matrix::{Dimension, Matrix, RealMatrix};
 
 #[derive(Clone, Copy)]
 pub enum Transformation {
     None,
     Dct1dInverse,
+    Dct1d,
 }
 
-impl<const N: usize> Into<TransformMatrix<N>> for Transformation {
-    fn into(self) -> TransformMatrix<N> {
+impl Transformation {
+    pub fn into_matrix(self, dimension: usize) -> Matrix {
         match self {
-            Transformation::None => TransformMatrix::none(),
-            Transformation::Dct1dInverse => TransformMatrix::dct1d_inverse(),
-        }
-    }
-}
-
-pub struct TransformMatrix<const N: usize> {
-    matrix: DMatrix<f64>,
-}
-
-impl<const N: usize> TransformMatrix<N> {
-    pub fn none() -> Self {
-        Self {
-            // TODO: we actually can skip the calculation in this case, to be optimized
-            // Nonethe less it make sense for other cases to store the transform matrix to be faster when decompressing
-            matrix: DMatrix::identity(N, N),
+            Transformation::None => Matrix::Identity(Dimension {
+                nrows: dimension,
+                ncols: dimension,
+            }),
+            Transformation::Dct1dInverse => Transformation::dct1d_inverse(dimension).into(),
+            Transformation::Dct1d => Transformation::dct1d(dimension).into(),
         }
     }
 
     // DCT 2, 1D
-    pub fn dct1d() -> Self {
+    fn dct1d(dimension: usize) -> RealMatrix {
         // TODO reuse planner
         let mut planner = DctPlanner::<f64>::new();
-        let dct = planner.plan_dct2(N);
+        let dct = planner.plan_dct2(dimension);
         let mut scratch = vec![0.0; dct.get_scratch_len()];
 
-        let mut matrix = DMatrix::<f64>::identity(N, N);
+        let mut matrix = DMatrix::<f64>::identity(dimension, dimension);
         for mut col in matrix.column_iter_mut() {
             dct.process_dct2_with_scratch(col.as_mut_slice(), &mut scratch);
         }
 
         // normalize
-        matrix = matrix.div(f64::sqrt(N as f64 / 2.0));
+        matrix = matrix.div(f64::sqrt(dimension as f64 / 2.0));
 
-        Self { matrix }
+        matrix.into()
     }
     // DCT 2 inverse, 1D
     // TODO consolidate methose
-    pub fn dct1d_inverse() -> Self {
+    pub fn dct1d_inverse(dimension: usize) -> RealMatrix {
         // TODO reuse planner
         let mut planner = DctPlanner::<f64>::new();
 
         // Inverse of DCT 2 is DCT3
-        let dct = planner.plan_dct3(N);
+        let dct = planner.plan_dct3(dimension);
         let mut scratch = vec![0.0; dct.get_scratch_len()];
 
-        let mut matrix = DMatrix::<f64>::identity(N, N);
+        let mut matrix = DMatrix::<f64>::identity(dimension, dimension);
         for mut col in matrix.column_iter_mut() {
             dct.process_dct3_with_scratch(col.as_mut_slice(), &mut scratch);
         }
 
         // normalize
-        matrix = matrix.div(f64::sqrt(N as f64 / 2.0));
+        matrix = matrix.div(f64::sqrt(dimension as f64 / 2.0));
 
-        Self { matrix }
-    }
-}
-
-impl<const N: usize> AsRef<DMatrix<f64>> for TransformMatrix<N> {
-    fn as_ref(&self) -> &DMatrix<f64> {
-        &self.matrix
+        matrix.into()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use approx::{assert_relative_eq, relative_eq};
+    use approx::assert_relative_eq;
     use nalgebra::{DMatrix, DVector};
 
-    use super::TransformMatrix;
+    use crate::Transformation;
 
     const TOLERANCE: f64 = 0.01;
+    const N: usize = 4;
 
     #[test]
     fn dct1d() {
-        let t = TransformMatrix::<4>::dct1d();
-        println!("DCT1D {}", t.matrix);
+        let t: DMatrix<f64> = Transformation::dct1d(N).into();
+        println!("DCT1D {}", t);
 
-        let inv = TransformMatrix::<4>::dct1d_inverse();
-        println!("DCT1D inverse {}", inv.matrix);
+        let inv: DMatrix<f64> = Transformation::dct1d_inverse(N).into();
+        println!("DCT1D inverse {}", inv);
 
         let x = DVector::<f64>::from_fn(4, |i, _| i as f64);
-        let x_trans = &t.matrix * &x;
-        let x2 = &inv.matrix * x_trans;
+
+        let x_trans = &t * &x;
+        let x2 = &inv * x_trans;
         assert_relative_eq!(x, x2, epsilon = TOLERANCE);
 
         assert_relative_eq!(
             DMatrix::<f64>::identity(4, 4),
-            inv.matrix * t.matrix,
+            (inv * t),
             epsilon = TOLERANCE
         );
     }

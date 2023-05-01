@@ -1,32 +1,40 @@
-use algorithm::{matching_pursuit::MatchingPursuit, Algorithm};
+extern crate derive_more;
+
+use algorithm::{matching_pursuit::MatchingPursuitSolver, Algorithm};
+use matrix::Matrix;
 use measurement_matrix::MeasurementMatrix;
-use sensing_matrix::SensingMatrix;
-use transform_matrix::TransformMatrix;
 
 pub mod algorithm;
+pub mod matrix;
 pub mod measurement_matrix;
-pub mod sensing_matrix;
+pub mod signal;
 pub mod transform_matrix;
 
+use signal::{RealViewSignal, Signal};
 pub use transform_matrix::Transformation;
 
 pub struct ModelBuilder {
+    algorithm: Algorithm,
     transform: Transformation,
 }
 
 impl Default for ModelBuilder {
     fn default() -> Self {
         Self {
+            // TODO impl default for matching pursuit
+            algorithm: Algorithm::MatchingPursuit(MatchingPursuitSolver::with_parameters(
+                1000, 0.1,
+            )),
             transform: Transformation::None,
         }
     }
 }
 // TODO maybe don't use const generic so one could store models of dynamic sizes
 pub struct Model<const M: usize, const N: usize> {
-    algorithim: Box<dyn Algorithm<M, N>>,
-    measurement_matrix: MeasurementMatrix<M, N>,
-    transform: TransformMatrix<N>,
-    sensing_matrix: SensingMatrix,
+    algorithm: Algorithm,
+    measurement_matrix: Matrix,
+    transform: Matrix,
+    sensing_matrix: Matrix,
 }
 
 impl ModelBuilder {
@@ -43,16 +51,17 @@ impl ModelBuilder {
         todo!()
     }
 
-    pub fn with_algorithm(&mut self) -> &mut Self {
-        todo!()
+    pub fn with_algorithm(&mut self, algorithm: Algorithm) -> &mut Self {
+        self.algorithm = algorithm;
+        self
     }
 
     pub fn build<const M: usize, const N: usize>(&self) -> Model<M, N> {
-        let measurement = MeasurementMatrix::new_bernoulli();
-        let transform = self.transform.into();
-        let sensing = SensingMatrix::from(&measurement, &transform);
+        let measurement = MeasurementMatrix::Bernoulli.into_matrix(M, N);
+        let transform = self.transform.into_matrix(N);
+        let sensing = &measurement * &transform;
         Model {
-            algorithim: MatchingPursuit::with_parameters(1000, 0.1),
+            algorithm: self.algorithm,
             measurement_matrix: measurement,
             transform,
             sensing_matrix: sensing,
@@ -61,21 +70,26 @@ impl ModelBuilder {
 }
 
 impl<const M: usize, const N: usize> Model<M, N> {
+    pub fn builder() -> ModelBuilder {
+        Default::default()
+    }
+
     pub fn compress<T>(&self, input: T) -> Vec<f64>
     where
         T: AsRef<[f64]>,
     {
         // TODO padding
-        let uncompressed = nalgebra::DVectorView::from_slice(input.as_ref(), N);
-        (self.measurement_matrix.as_ref() * uncompressed)
-            .data
-            .into()
+        let uncompressed: Signal = RealViewSignal::from(input.as_ref()).into();
+        (&self.measurement_matrix * uncompressed).into()
     }
 
-    pub fn decompress(&self, input: &Vec<f64>) -> Vec<f64> {
-        let compressed = nalgebra::DVectorView::from_slice(input.as_ref(), M);
-        let sparse = self.algorithim.solve(&compressed, &self.sensing_matrix);
+    pub fn decompress<T>(&self, input: T) -> Vec<f64>
+    where
+        T: AsRef<[f64]>,
+    {
+        let compressed = RealViewSignal::from(input.as_ref());
+        let sparse = self.algorithm.solve(&compressed, &self.sensing_matrix);
 
-        (self.transform.as_ref() * sparse).data.into()
+        (&self.transform * sparse).into()
     }
 }

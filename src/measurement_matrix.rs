@@ -1,29 +1,31 @@
-use nalgebra::{DMatrix, DVector};
+use nalgebra::DMatrix;
 use rand::{distributions::Bernoulli, prelude::Distribution};
 
-pub struct MeasurementMatrix<const M: usize, const N: usize> {
-    matrix: DMatrix<f64>,
+use crate::matrix::{Matrix, RealMatrix};
+
+pub enum MeasurementMatrix {
+    Bernoulli,
 }
 
-impl<const M: usize, const N: usize> MeasurementMatrix<M, N> {
-    pub fn new_bernoulli() -> Self {
+impl MeasurementMatrix {
+    pub fn into_matrix(self, nrows: usize, ncolumns: usize) -> Matrix {
+        match self {
+            MeasurementMatrix::Bernoulli => {
+                Matrix::Real(MeasurementMatrix::bernoulli(nrows, ncolumns))
+            }
+        }
+    }
+
+    fn bernoulli(nrows: usize, ncolumns: usize) -> RealMatrix {
         // TODO make this injectable
         let rng = rand::thread_rng();
-        let norm = 1.0 / ((M as f64).sqrt());
+        let norm = 1.0 / ((ncolumns as f64).sqrt());
         let mut dist =
             Bernoulli::new(0.5)
                 .unwrap()
                 .sample_iter(rng)
                 .map(|v| if v { norm } else { -norm });
-        Self {
-            matrix: DMatrix::from_fn(M, N, |_, _| dist.next().unwrap()),
-        }
-    }
-}
-
-impl<const M: usize, const N: usize> AsRef<DMatrix<f64>> for MeasurementMatrix<M, N> {
-    fn as_ref(&self) -> &DMatrix<f64> {
-        &self.matrix
+        DMatrix::from_fn(nrows, ncolumns, |_, _| dist.next().unwrap()).into()
     }
 }
 
@@ -33,7 +35,7 @@ mod test {
 
     #[test]
     fn bernoulli() {
-        let s = MeasurementMatrix::<5, 10>::new_bernoulli();
-        println!("Generated bernoulli matrix {}", s.matrix)
+        let s = MeasurementMatrix::bernoulli(5, 10);
+        println!("Generated bernoulli matrix {:?}", s)
     }
 }

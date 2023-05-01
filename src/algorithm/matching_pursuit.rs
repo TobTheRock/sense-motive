@@ -1,38 +1,35 @@
-use nalgebra::DVector;
-
-use crate::sensing_matrix::SensingMatrix;
-
-use super::Algorithm;
-
-pub struct MatchingPursuit {
+#[derive(Clone, Copy)]
+pub struct MatchingPursuitSolver {
     max_iter: usize,
     tolerance: f64,
 }
 
-impl MatchingPursuit {
-    pub fn with_parameters(max_iter: usize, tolerance: f64) -> Box<MatchingPursuit> {
-        Box::new(MatchingPursuit {
+impl MatchingPursuitSolver {
+    pub fn with_parameters(max_iter: usize, tolerance: f64) -> MatchingPursuitSolver {
+        MatchingPursuitSolver {
             max_iter,
             tolerance,
-        })
+        }
     }
 }
 
-impl<const M: usize, const N: usize> Algorithm<M, N> for MatchingPursuit {
-    fn solve(
+impl MatchingPursuitSolver {
+    pub fn solve(
         &self,
         y: &nalgebra::DVectorView<f64>,
-        sensing_matrix: &SensingMatrix,
+        sensing_matrix: &nalgebra::DMatrix<f64>,
     ) -> nalgebra::DVector<f64> {
-        let mut sparse = DVector::zeros(N);
+        let original_len = sensing_matrix.ncols();
+
+        let mut sparse = nalgebra::DVector::zeros(original_len);
         let mut residual = y.clone_owned();
 
         for _ in 0..self.max_iter {
-            let inner_products = sensing_matrix.as_ref().tr_mul(&residual);
+            let inner_products = sensing_matrix.tr_mul(&residual);
             let max_idx = inner_products.iamax();
 
             sparse[max_idx] += inner_products[max_idx];
-            residual -= inner_products[max_idx] * sensing_matrix.as_ref().column(max_idx);
+            residual -= inner_products[max_idx] * sensing_matrix.column(max_idx);
 
             if residual.norm() < self.tolerance {
                 break;
@@ -49,9 +46,7 @@ mod test {
     use approx::assert_relative_eq;
     use nalgebra::{dmatrix, dvector};
 
-    use crate::algorithm::Algorithm;
-
-    use super::MatchingPursuit;
+    use super::MatchingPursuitSolver;
 
     const ONE_HALF: f64 = 1.0 / 2.0;
     const ONE_THIRD: f64 = 1.0 / 3.0;
@@ -68,13 +63,12 @@ mod test {
         let expected = dvector![0.0, 1.0, 0.0, 0.0];
         let compressed = &sensing_matrix * &expected;
 
-        let algorithm = MatchingPursuit {
+        let algorithm = MatchingPursuitSolver {
             max_iter: 1,
             tolerance: 0.1,
         };
 
-        let decompressed =
-            Algorithm::<3, 4>::solve(&algorithm, &compressed.column(0), &sensing_matrix.into());
+        let decompressed = algorithm.solve(&compressed.column(0), &sensing_matrix.into());
 
         assert_relative_eq!(expected, decompressed);
     }
@@ -89,16 +83,12 @@ mod test {
         ];
         let compressed = dvector![1.0, 1.0, 1.0];
         let expected_tolerance = 2.0_f64.sqrt();
-        let algorithm = MatchingPursuit {
+        let algorithm = MatchingPursuitSolver {
             max_iter: 10,
             tolerance: expected_tolerance + 0.1,
         };
 
-        let decompressed = Algorithm::<3, 4>::solve(
-            &algorithm,
-            &compressed.column(0),
-            &sensing_matrix.clone().into(),
-        );
+        let decompressed = algorithm.solve(&compressed.column(0), &sensing_matrix.clone().into());
 
         assert_eq!(decompressed, dvector![1.0, 0.0, 0.0, 0.0]);
 
