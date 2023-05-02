@@ -2,7 +2,19 @@ use std::ops::Mul;
 
 use nalgebra::{DMatrix, DVectorView};
 
-use crate::signal::{RealOwnedSignal, RealViewSignal, Signal};
+pub trait AsChunks<'a> {
+    fn chunks(&'a self, size: usize) -> DVectorView<'a, f64>;
+}
+
+impl<'a, T> AsChunks<'a> for T
+where
+    T: AsRef<[f64]>,
+{
+    fn chunks(&'a self, size: usize) -> DVectorView<'a, f64> {
+        // TODO slicing, padding, return Iter over DVectorViews
+        DVectorView::from_slice(self.as_ref(), size)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Dimension {
@@ -52,15 +64,16 @@ impl Mul for &Matrix {
     }
 }
 
-impl<'a> Mul<Signal<'a>> for &Matrix {
-    type Output = RealOwnedSignal;
+impl<'a, T> Mul<&'a T> for &Matrix
+where
+    T: AsChunks<'a> + AsRef<[f64]>,
+{
+    type Output = Vec<f64>;
 
-    fn mul(self, rhs: Signal) -> Self::Output {
-        match (self, rhs) {
-            (Matrix::Identity(_), Signal::RealOwned(s)) => s,
-            (Matrix::Identity(_), Signal::RealView(s)) => s.into(),
-            (Matrix::Real(m), Signal::RealOwned(s)) => m * s.chunks(m.dimension().ncols),
-            (Matrix::Real(m), Signal::RealView(s)) => m * s.chunks(m.dimension().ncols),
+    fn mul(self, rhs: &'a T) -> Self::Output {
+        match self {
+            Matrix::Identity(_) => rhs.as_ref().into(),
+            Matrix::Real(matrix) => matrix * rhs.chunks(matrix.dimension().ncols),
         }
     }
 }
@@ -149,12 +162,11 @@ impl Mul for &RealMatrix {
 }
 
 impl<'a> Mul<DVectorView<'a, f64>> for &RealMatrix {
-    type Output = RealOwnedSignal;
+    type Output = Vec<f64>;
 
     fn mul(self, rhs: DVectorView<'a, f64>) -> Self::Output {
         let result = &self.inner * rhs;
-        let vec: Vec<f64> = result.data.into();
-        RealOwnedSignal::from(vec)
+        result.data.into()
     }
 }
 

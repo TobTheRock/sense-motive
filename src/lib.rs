@@ -7,10 +7,8 @@ use measurement_matrix::MeasurementMatrix;
 pub mod algorithm;
 pub mod matrix;
 pub mod measurement_matrix;
-pub mod signal;
 pub mod transform_matrix;
 
-use signal::{RealViewSignal, Signal};
 pub use transform_matrix::Transformation;
 
 pub struct ModelBuilder {
@@ -74,22 +72,19 @@ impl Model {
         Default::default()
     }
 
-    pub fn compress<T>(&self, input: T) -> Vec<f64>
+    pub fn compress<T>(&self, orginal: T) -> Vec<f64>
     where
         T: AsRef<[f64]>,
     {
-        // TODO padding
-        let uncompressed: Signal = RealViewSignal::from(input.as_ref()).into();
-        (&self.measurement_matrix * uncompressed).into()
+        &self.measurement_matrix * &orginal.as_ref()
     }
 
-    pub fn decompress<T>(&self, input: T) -> Vec<f64>
+    pub fn decompress<T>(&self, compressed: T) -> Vec<f64>
     where
         T: AsRef<[f64]>,
     {
-        let compressed = RealViewSignal::from(input.as_ref());
         let sparse = self.algorithm.solve(&compressed, &self.sensing_matrix);
 
-        (&self.transform * sparse).into()
+        &self.transform * &sparse
     }
 }

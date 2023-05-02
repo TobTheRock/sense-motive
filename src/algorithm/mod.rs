@@ -1,7 +1,4 @@
-use crate::{
-    matrix::Matrix,
-    signal::{RealViewSignal, Signal},
-};
+use crate::matrix::{AsChunks, Matrix};
 
 use self::matching_pursuit::MatchingPursuitSolver;
 pub mod matching_pursuit;
@@ -12,18 +9,18 @@ pub enum Algorithm {
 }
 
 impl Algorithm {
-    pub fn solve(
-        &self,
-        // TODO: type for compressed signal/ sparse signal
-        y: &RealViewSignal,
-        sensing_matrix: &Matrix,
-    ) -> Signal {
+    pub fn solve<'a, T>(&self, compressed: &'a T, sensing_matrix: &Matrix) -> Vec<f64>
+    where
+        T: AsChunks<'a> + AsRef<[f64]>,
+    {
         match (self, sensing_matrix) {
             // TODO better comparison, error handling
             (Algorithm::MatchingPursuit(mp), Matrix::Identity(_)) => panic!(),
             (Algorithm::MatchingPursuit(mp), Matrix::Real(matrix)) => {
                 let samples_in = matrix.dimension().nrows;
-                mp.solve(&y.chunks(samples_in), matrix.as_ref()).into()
+                mp.solve(&compressed.chunks(samples_in), matrix.as_ref())
+                    .data
+                    .into()
             }
         }
     }
