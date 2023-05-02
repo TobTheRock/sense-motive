@@ -19,7 +19,7 @@ const TRANSFORM: Transformation = Transformation::Dct1dInverse;
 fn main() {
     let model = ModelBuilder::new()
         .with_transformation(TRANSFORM)
-        .build::<M, N>();
+        .build(M, N);
 
     let original = match TRANSFORM {
         Transformation::None => generate_sparse_signal(K),

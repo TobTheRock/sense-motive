@@ -30,7 +30,7 @@ impl Default for ModelBuilder {
     }
 }
 // TODO maybe don't use const generic so one could store models of dynamic sizes
-pub struct Model<const M: usize, const N: usize> {
+pub struct Model {
     algorithm: Algorithm,
     measurement_matrix: Matrix,
     transform: Matrix,
@@ -56,9 +56,9 @@ impl ModelBuilder {
         self
     }
 
-    pub fn build<const M: usize, const N: usize>(&self) -> Model<M, N> {
-        let measurement = MeasurementMatrix::Bernoulli.into_matrix(M, N);
-        let transform = self.transform.into_matrix(N);
+    pub fn build(&self, size_compressed: usize, size_original: usize) -> Model {
+        let measurement = MeasurementMatrix::Bernoulli.into_matrix(size_compressed, size_original);
+        let transform = self.transform.into_matrix(size_original);
         let sensing = &measurement * &transform;
         Model {
             algorithm: self.algorithm,
@@ -69,7 +69,7 @@ impl ModelBuilder {
     }
 }
 
-impl<const M: usize, const N: usize> Model<M, N> {
+impl Model {
     pub fn builder() -> ModelBuilder {
         Default::default()
     }
