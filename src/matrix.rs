@@ -1,6 +1,7 @@
 use std::ops::Mul;
 
-use nalgebra::{DMatrix, DVectorView};
+use derive_more::{AsRef, From, Into};
+use nalgebra::DVectorView;
 
 pub trait AsChunks<'a> {
     fn chunks(&'a self, size: usize) -> DVectorView<'a, f64>;
@@ -32,7 +33,7 @@ impl Dimension {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, From)]
 pub enum Matrix {
     Identity(Dimension),
     Real(RealMatrix),
@@ -93,12 +94,6 @@ impl From<nalgebra::DMatrix<f64>> for Matrix {
     }
 }
 
-impl From<Vec<f64>> for Matrix {
-    fn from(vec: Vec<f64>) -> Self {
-        Matrix::Real(RealMatrix::from(vec))
-    }
-}
-
 impl Matrix {
     fn dimension(&self) -> Dimension {
         match self {
@@ -108,56 +103,14 @@ impl Matrix {
     }
 }
 
-// TODO use a tuple and derive AsRef
-#[derive(Clone, Debug, PartialEq)]
-pub struct RealMatrix {
-    inner: nalgebra::DMatrix<f64>,
-}
-
-impl From<nalgebra::DMatrix<f64>> for RealMatrix {
-    fn from(matrix: nalgebra::DMatrix<f64>) -> Self {
-        Self { inner: matrix }
-    }
-}
-
-impl Into<nalgebra::DMatrix<f64>> for RealMatrix {
-    fn into(self) -> nalgebra::DMatrix<f64> {
-        self.inner
-    }
-}
-
-impl From<Vec<f64>> for RealMatrix {
-    fn from(vec: Vec<f64>) -> Self {
-        let nrows = vec.len();
-        Self {
-            inner: DMatrix::from_vec(nrows, 1, vec),
-        }
-    }
-}
-
-impl AsRef<nalgebra::DMatrix<f64>> for RealMatrix {
-    fn as_ref(&self) -> &nalgebra::DMatrix<f64> {
-        &self.inner
-    }
-}
-
-impl Into<Matrix> for RealMatrix {
-    fn into(self) -> Matrix {
-        Matrix::Real(self)
-    }
-}
-
-impl Into<Vec<f64>> for RealMatrix {
-    fn into(self) -> Vec<f64> {
-        self.inner.data.into()
-    }
-}
+#[derive(Clone, Debug, PartialEq, AsRef, From, Into)]
+pub struct RealMatrix(nalgebra::DMatrix<f64>);
 
 impl Mul for &RealMatrix {
     type Output = RealMatrix;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        (&self.inner * &rhs.inner).into()
+        (&self.0 * &rhs.0).into()
     }
 }
 
@@ -165,7 +118,7 @@ impl<'a> Mul<DVectorView<'a, f64>> for &RealMatrix {
     type Output = Vec<f64>;
 
     fn mul(self, rhs: DVectorView<'a, f64>) -> Self::Output {
-        let result = &self.inner * rhs;
+        let result = &self.0 * rhs;
         result.data.into()
     }
 }
@@ -173,8 +126,8 @@ impl<'a> Mul<DVectorView<'a, f64>> for &RealMatrix {
 impl RealMatrix {
     pub fn dimension(&self) -> Dimension {
         Dimension {
-            nrows: self.inner.nrows(),
-            ncols: self.inner.ncols(),
+            nrows: self.0.nrows(),
+            ncols: self.0.ncols(),
         }
     }
 }
