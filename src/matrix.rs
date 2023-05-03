@@ -1,6 +1,6 @@
 use std::ops::Mul;
 
-use derive_more::{AsRef, From, Into};
+use derive_more::{AsRef, From};
 use nalgebra::DVectorView;
 
 pub trait AsChunks<'a> {
@@ -74,7 +74,7 @@ where
     fn mul(self, rhs: &'a T) -> Self::Output {
         match self {
             Matrix::Identity(_) => rhs.as_ref().into(),
-            Matrix::Real(matrix) => matrix * rhs.chunks(matrix.dimension().ncols),
+            Matrix::Real(matrix) => (matrix * rhs.chunks(matrix.ncols())).data.into(),
         }
     }
 }
@@ -88,46 +88,4 @@ impl PartialEq for Matrix {
     }
 }
 
-impl From<nalgebra::DMatrix<f64>> for Matrix {
-    fn from(matrix: nalgebra::DMatrix<f64>) -> Self {
-        Matrix::Real(RealMatrix::from(matrix))
-    }
-}
-
-impl Matrix {
-    fn dimension(&self) -> Dimension {
-        match self {
-            Matrix::Identity(dim) => *dim,
-            Matrix::Real(matrix) => matrix.dimension(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, AsRef, From, Into)]
-pub struct RealMatrix(nalgebra::DMatrix<f64>);
-
-impl Mul for &RealMatrix {
-    type Output = RealMatrix;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        (&self.0 * &rhs.0).into()
-    }
-}
-
-impl<'a> Mul<DVectorView<'a, f64>> for &RealMatrix {
-    type Output = Vec<f64>;
-
-    fn mul(self, rhs: DVectorView<'a, f64>) -> Self::Output {
-        let result = &self.0 * rhs;
-        result.data.into()
-    }
-}
-
-impl RealMatrix {
-    pub fn dimension(&self) -> Dimension {
-        Dimension {
-            nrows: self.0.nrows(),
-            ncols: self.0.ncols(),
-        }
-    }
-}
+pub type RealMatrix = nalgebra::DMatrix<f64>;
