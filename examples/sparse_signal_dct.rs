@@ -25,6 +25,8 @@ fn main() {
         Transformation::None => generate_sparse_signal(K),
         Transformation::Dct1dInverse => generate_cos_signal(K),
         Transformation::Dct1d => todo!(),
+        Transformation::Fourier1dInverse => todo!(),
+        Transformation::Fourier1d => todo!(),
     };
 
     let compressed = model.compress(&original);

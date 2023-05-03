@@ -17,11 +17,10 @@ impl Algorithm {
             // TODO better comparison, error handling
             (Algorithm::MatchingPursuit(mp), Matrix::Identity(_)) => panic!(),
             (Algorithm::MatchingPursuit(mp), Matrix::Real(matrix)) => {
-                let samples_in = matrix.dimension().nrows;
-                mp.solve(&compressed.chunks(samples_in), matrix.as_ref())
-                    .data
-                    .into()
+                let samples_in = matrix.nrows();
+                mp.solve(&compressed.chunks(samples_in), matrix).data.into()
             }
+            (Algorithm::MatchingPursuit(_), Matrix::Complex(_)) => todo!(),
         }
     }
 }
