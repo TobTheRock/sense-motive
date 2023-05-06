@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 derive_more = "0.99.17"
 nalgebra = "0.32.2"
+num-complex = "0.4.3"
+num-traits = "0.2.15"
 rand = "0.8.5"
 rustdct = "0.7.1"
 rustfft = "6.1.0"

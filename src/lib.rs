@@ -7,8 +7,11 @@ use measurement_matrix::MeasurementMatrix;
 pub mod algorithm;
 pub mod matrix;
 pub mod measurement_matrix;
+mod precision;
 pub mod transform_matrix;
 
+use nalgebra::DMatrix;
+use precision::Precision;
 pub use transform_matrix::Transformation;
 
 pub struct ModelBuilder {
@@ -83,7 +86,20 @@ impl Model {
     where
         T: AsRef<[f64]>,
     {
-        let sparse = self.algorithm.solve(&compressed, &self.sensing_matrix);
+        match self.sensing_matrix {
+            Matrix::Identity(_) => todo!(),
+            Matrix::Real(m) => self.decompress_with(compressed, m),
+            Matrix::Complex(_) => todo!(),
+            // Matrix::Complex(m) => self.decompress_with(compressed, m),
+        }
+    }
+
+    fn decompress_with<T, P>(&self, compressed: T, matrix: DMatrix<P>) -> Vec<f64>
+    where
+        T: AsRef<[f64]>,
+        P: Precision,
+    {
+        let sparse = self.algorithm.solve(&compressed, &matrix);
 
         &self.transform * &sparse
     }

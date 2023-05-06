@@ -1,8 +1,9 @@
-use std::ops::Mul;
+use std::{fmt::Display, ops::Mul};
 
-use derive_more::From;
-use nalgebra::DVectorView;
-use rustfft::num_complex::Complex64;
+use derive_more::{Display, From};
+use nalgebra::{Complex, DVectorView};
+
+use crate::precision::Complex64;
 
 pub trait AsChunks<'a> {
     fn chunks(&'a self, size: usize) -> DVectorView<'a, f64>;
@@ -34,7 +35,14 @@ impl Dimension {
     }
 }
 
-#[derive(Debug, From)]
+impl Display for Dimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("(r: {}, c: {})", self.nrows, self.ncols));
+        Ok(())
+    }
+}
+
+#[derive(Debug, From, Display)]
 pub enum Matrix {
     Identity(Dimension),
     Real(RealMatrix),
@@ -106,6 +114,10 @@ where
     fn imag(&self) -> nalgebra::OMatrix<f64, R, C>;
 }
 
+pub trait ComplexConversion {
+    fn into_complex(self) -> ComplexMatrix;
+}
+
 // TODO return view instead of copy
 impl<R, C, S> ComplexGetter<R, C> for nalgebra::Matrix<Complex64, R, C, S>
 where
@@ -115,10 +127,16 @@ where
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, R, C>,
 {
     fn real(&self) -> nalgebra::OMatrix<f64, R, C> {
-        self.map(|e| e.re)
+        self.map(|e| e.0.re)
     }
 
     fn imag(&self) -> nalgebra::OMatrix<f64, R, C> {
-        self.map(|e| e.im)
+        self.map(|e| e.0.im)
+    }
+}
+
+impl ComplexConversion for nalgebra::DMatrix<num_complex::Complex64> {
+    fn into_complex(self) -> ComplexMatrix {
+        self.map(|e| e.into())
     }
 }

@@ -1,3 +1,5 @@
+use crate::precision::Precision;
+
 #[derive(Clone, Copy)]
 pub struct MatchingPursuitSolver {
     max_iter: usize,
@@ -13,23 +15,27 @@ impl MatchingPursuitSolver {
     }
 }
 
-impl MatchingPursuitSolver {
-    pub fn solve(
+impl<'a> MatchingPursuitSolver {
+    pub fn solve<P>(
         &self,
         y: &nalgebra::DVectorView<f64>,
-        sensing_matrix: &nalgebra::DMatrix<f64>,
-    ) -> nalgebra::DVector<f64> {
+        sensing_matrix: &nalgebra::DMatrix<P>,
+    ) -> nalgebra::DVector<P>
+    where
+        P: Precision,
+    {
         let original_len = sensing_matrix.ncols();
 
-        let mut sparse = nalgebra::DVector::zeros(original_len);
-        let mut residual = y.clone_owned();
+        let mut sparse = nalgebra::DVector::<P>::zeros(original_len);
+        let mut residual = y.map(|e| nalgebra::convert(e));
 
         for _ in 0..self.max_iter {
             let inner_products = sensing_matrix.tr_mul(&residual);
             let max_idx = inner_products.iamax();
+            let max_col = sensing_matrix.column(max_idx);
 
             sparse[max_idx] += inner_products[max_idx];
-            residual -= inner_products[max_idx] * sensing_matrix.column(max_idx);
+            residual -= max_col * inner_products[max_idx];
 
             if residual.norm() < self.tolerance {
                 break;

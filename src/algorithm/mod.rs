@@ -1,4 +1,7 @@
-use crate::matrix::{AsChunks, Matrix};
+use crate::{
+    matrix::{AsChunks, Matrix},
+    precision::Precision,
+};
 
 use self::matching_pursuit::MatchingPursuitSolver;
 pub mod matching_pursuit;
@@ -9,18 +12,16 @@ pub enum Algorithm {
 }
 
 impl Algorithm {
-    pub fn solve<'a, T>(&self, compressed: &'a T, sensing_matrix: &Matrix) -> Vec<f64>
+    pub fn solve<'a, T, P>(&self, compressed: &'a T, matrix: &nalgebra::DMatrix<P>) -> Vec<P>
     where
         T: AsChunks<'a> + AsRef<[f64]>,
+        P: Precision,
     {
-        match (self, sensing_matrix) {
-            // TODO better comparison, error handling
-            (Algorithm::MatchingPursuit(mp), Matrix::Identity(_)) => panic!(),
-            (Algorithm::MatchingPursuit(mp), Matrix::Real(matrix)) => {
+        match self {
+            Algorithm::MatchingPursuit(mp) => {
                 let samples_in = matrix.nrows();
                 mp.solve(&compressed.chunks(samples_in), matrix).data.into()
             }
-            (Algorithm::MatchingPursuit(_), Matrix::Complex(_)) => todo!(),
         }
     }
 }
