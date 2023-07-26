@@ -1,19 +1,30 @@
-use std::{fmt::Display, ops::Mul};
+use std::{
+    fmt::Display,
+    ops::{Add, Mul},
+};
 
 use derive_more::{Display, From};
-use nalgebra::{Complex, DVectorView};
+use nalgebra::{
+    constraint::AreMultipliable, ClosedMul, Complex, ComplexField, DMatrix, DVectorView, Dyn,
+    RealField, VectorView, U1,
+};
+use simba::scalar::{SubsetOf, SupersetOf};
 
-use crate::precision::Complex64;
+use crate::precision::{Complex64, Precision};
 
-pub trait AsChunks<'a> {
-    fn chunks(&'a self, size: usize) -> DVectorView<'a, f64>;
+pub trait AsVectorChunks<'a, P>: AsRef<[P]>
+where
+    P: Precision,
+{
+    fn as_vec_chuncks(&'a self, size: usize) -> DVectorView<'a, P>;
 }
 
-impl<'a, T> AsChunks<'a> for T
+impl<'a, T, P> AsVectorChunks<'a, P> for T
 where
-    T: AsRef<[f64]>,
+    T: AsRef<[P]>,
+    P: Precision,
 {
-    fn chunks(&'a self, size: usize) -> DVectorView<'a, f64> {
+    fn as_vec_chuncks(&'a self, size: usize) -> DVectorView<'a, P> {
         // TODO slicing, padding, return Iter over DVectorViews
         DVectorView::from_slice(self.as_ref(), size)
     }
@@ -58,9 +69,9 @@ impl Mul<Matrix> for Matrix {
             (Matrix::Identity(_), Matrix::Real(matrix)) => matrix.into(),
             (Matrix::Real(matrix), Matrix::Identity(_)) => matrix.into(),
             (Matrix::Real(lhs), Matrix::Real(rhs)) => (&lhs * &rhs).into(),
-            (Matrix::Identity(_), Matrix::Complex(_)) => todo!(),
+            (Matrix::Identity(_), Matrix::Complex(matrix)) => matrix.into(),
             (Matrix::Real(_), Matrix::Complex(_)) => todo!(),
-            (Matrix::Complex(_), Matrix::Identity(_)) => todo!(),
+            (Matrix::Complex(_), Matrix::Identity(matrix)) => matrix.into(),
             (Matrix::Complex(_), Matrix::Real(_)) => todo!(),
             (Matrix::Complex(_), Matrix::Complex(_)) => todo!(),
         }
@@ -73,12 +84,12 @@ impl Mul for &Matrix {
     fn mul(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Matrix::Identity(ldim), Matrix::Identity(rdim)) => Matrix::Identity(ldim.merge(rdim)),
-            (Matrix::Identity(_), Matrix::Real(matrix)) => Matrix::Real(matrix.clone()),
-            (Matrix::Real(matrix), Matrix::Identity(_)) => Matrix::Real(matrix.clone()),
+            (Matrix::Identity(_), Matrix::Real(matrix)) => matrix.clone().into(),
+            (Matrix::Real(matrix), Matrix::Identity(_)) => matrix.clone().into(),
             (Matrix::Real(lhs), Matrix::Real(rhs)) => (lhs * rhs).into(),
-            (Matrix::Identity(_), Matrix::Complex(_)) => todo!(),
+            (Matrix::Identity(_), Matrix::Complex(matrix)) => matrix.clone().into(),
             (Matrix::Real(_), Matrix::Complex(_)) => todo!(),
-            (Matrix::Complex(_), Matrix::Identity(_)) => todo!(),
+            (Matrix::Complex(_), Matrix::Identity(matrix)) => matrix.clone().into(),
             (Matrix::Complex(_), Matrix::Real(_)) => todo!(),
             (Matrix::Complex(_), Matrix::Complex(_)) => todo!(),
         }
@@ -86,17 +97,28 @@ impl Mul for &Matrix {
 }
 
 // multiplication with a real vector
-impl<'a, T> Mul<&'a T> for &Matrix
-where
-    T: AsChunks<'a> + AsRef<[f64]>,
-{
+impl Mul<&[f64]> for &Matrix {
     type Output = Vec<f64>;
 
-    fn mul(self, rhs: &'a T) -> Self::Output {
+    fn mul(self, rhs: &[f64]) -> Self::Output {
         match self {
             Matrix::Identity(_) => rhs.as_ref().into(),
-            Matrix::Real(matrix) => (matrix * rhs.chunks(matrix.ncols())).data.into(),
-            Matrix::Complex(_) => todo!(),
+            Matrix::Real(matrix) => matrix.mul_chunked(rhs),
+            Matrix::Complex(matrix) => matrix.real().mul_chunked(rhs),
+        }
+    }
+}
+impl Mul<&[Complex64]> for &Matrix {
+    type Output = Vec<Complex64>;
+
+    fn mul(self, rhs: &[Complex64]) -> Self::Output {
+        match self {
+            Matrix::Identity(_) => rhs.into(),
+            Matrix::Real(matrix) => {
+                let cmatrix: DMatrix<Complex64> = matrix.to_superset();
+                cmatrix.mul_chunked(rhs)
+            }
+            Matrix::Complex(matrix) => matrix.mul_chunked(rhs),
         }
     }
 }
@@ -104,39 +126,70 @@ where
 pub type RealMatrix = nalgebra::DMatrix<f64>;
 pub type ComplexMatrix = nalgebra::DMatrix<Complex64>;
 
-pub trait ComplexGetter<R, C>
+pub trait MatrixComplexFields<P, R, C>
 where
+    P: Precision,
     R: nalgebra::Dim,
     C: nalgebra::Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, R, C>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<P::RealField, R, C>,
 {
-    fn real(&self) -> nalgebra::OMatrix<f64, R, C>;
-    fn imag(&self) -> nalgebra::OMatrix<f64, R, C>;
-}
-
-pub trait ComplexConversion {
-    fn into_complex(self) -> ComplexMatrix;
+    fn real(&self) -> nalgebra::OMatrix<P::RealField, R, C>;
+    fn imag(&self) -> nalgebra::OMatrix<P::RealField, R, C>;
 }
 
 // TODO return view instead of copy
-impl<R, C, S> ComplexGetter<R, C> for nalgebra::Matrix<Complex64, R, C, S>
+impl<P, R, C, S> MatrixComplexFields<P, R, C> for nalgebra::Matrix<P, R, C, S>
 where
-    S: nalgebra::RawStorage<Complex64, R, C>,
+    P: Precision,
+    S: nalgebra::RawStorage<P, R, C> + nalgebra::Storage<P, R, C>,
     R: nalgebra::Dim,
     C: nalgebra::Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, R, C>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<P::RealField, R, C>,
 {
-    fn real(&self) -> nalgebra::OMatrix<f64, R, C> {
-        self.map(|e| e.0.re)
+    fn real(&self) -> nalgebra::OMatrix<P::RealField, R, C> {
+        self.map(|e| e.real())
     }
 
-    fn imag(&self) -> nalgebra::OMatrix<f64, R, C> {
-        self.map(|e| e.0.im)
+    fn imag(&self) -> nalgebra::OMatrix<P::RealField, R, C> {
+        self.map(|e| e.imaginary())
     }
 }
 
-impl ComplexConversion for nalgebra::DMatrix<num_complex::Complex64> {
-    fn into_complex(self) -> ComplexMatrix {
-        self.map(|e| e.into())
+pub trait ChunkedMultiplication<P>
+where
+    P: Precision,
+{
+    fn mul_chunked(&self, signal: &[P]) -> Vec<P>;
+}
+
+impl<P> ChunkedMultiplication<P> for nalgebra::DMatrix<P>
+where
+    P: Precision,
+{
+    fn mul_chunked(&self, signal: &[P]) -> Vec<P> {
+        // TODO use asVecChuncks
+        let size = self.ncols();
+        let vec = DVectorView::from_slice(signal, size);
+
+        (self * vec).data.into()
     }
 }
+
+// trait VectorHelper<P, R>
+// where
+//     P: Precision,
+//     R: nalgebra::Dim,
+// {
+//     //! equivalent to iamax
+//     fn max_abs_idx() -> usize;
+// }
+
+// impl<P, R, S> VectorHelper<P, R> for nalgebra::Matrix<P, R, nalgebra::U1, S>
+// where
+//     P: Precision,
+//     R: nalgebra::Dim,
+// {
+//     fn max_abs_idx() -> usize {
+//         todo!()
+//     }
+// }

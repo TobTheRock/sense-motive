@@ -1,17 +1,17 @@
 extern crate derive_more;
 
 use algorithm::{matching_pursuit::MatchingPursuitSolver, Algorithm};
+use complex::ComplexFields;
 use matrix::Matrix;
 use measurement_matrix::MeasurementMatrix;
 
 pub mod algorithm;
+mod complex;
 pub mod matrix;
 pub mod measurement_matrix;
 mod precision;
 pub mod transform_matrix;
 
-use nalgebra::DMatrix;
-use precision::Precision;
 pub use transform_matrix::Transformation;
 
 pub struct ModelBuilder {
@@ -79,28 +79,23 @@ impl Model {
     where
         T: AsRef<[f64]>,
     {
-        &self.measurement_matrix * &orginal.as_ref()
+        &self.measurement_matrix * orginal.as_ref()
     }
 
     pub fn decompress<T>(&self, compressed: T) -> Vec<f64>
     where
         T: AsRef<[f64]>,
     {
-        match self.sensing_matrix {
-            Matrix::Identity(_) => todo!(),
-            Matrix::Real(m) => self.decompress_with(compressed, m),
-            Matrix::Complex(_) => todo!(),
-            // Matrix::Complex(m) => self.decompress_with(compressed, m),
+        match &self.sensing_matrix {
+            Matrix::Identity(_) => compressed.as_ref().to_vec(),
+            Matrix::Real(m) => {
+                let sparse = self.algorithm.solve(&compressed, &m);
+                &self.transform * sparse.as_slice()
+            }
+            Matrix::Complex(m) => {
+                let sparse = self.algorithm.solve(&compressed, &m);
+                (&self.transform * sparse.as_slice()).real()
+            }
         }
-    }
-
-    fn decompress_with<T, P>(&self, compressed: T, matrix: DMatrix<P>) -> Vec<f64>
-    where
-        T: AsRef<[f64]>,
-        P: Precision,
-    {
-        let sparse = self.algorithm.solve(&compressed, &matrix);
-
-        &self.transform * &sparse
     }
 }

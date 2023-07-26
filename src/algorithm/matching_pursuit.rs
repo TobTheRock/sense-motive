@@ -1,4 +1,7 @@
 use crate::precision::Precision;
+use nalgebra::ComplexField;
+use num_traits::ToPrimitive;
+use simba::scalar::SubsetOf;
 
 #[derive(Clone, Copy)]
 pub struct MatchingPursuitSolver {
@@ -23,6 +26,7 @@ impl<'a> MatchingPursuitSolver {
     ) -> nalgebra::DVector<P>
     where
         P: Precision,
+        <P as ComplexField>::RealField: SubsetOf<f64>,
     {
         let original_len = sensing_matrix.ncols();
 
@@ -31,13 +35,13 @@ impl<'a> MatchingPursuitSolver {
 
         for _ in 0..self.max_iter {
             let inner_products = sensing_matrix.tr_mul(&residual);
-            let max_idx = inner_products.iamax();
+            let max_idx = inner_products.icamax();
             let max_col = sensing_matrix.column(max_idx);
 
             sparse[max_idx] += inner_products[max_idx];
             residual -= max_col * inner_products[max_idx];
 
-            if residual.norm() < self.tolerance {
+            if nalgebra::convert::<_, f64>(residual.norm()) < self.tolerance {
                 break;
             }
         }

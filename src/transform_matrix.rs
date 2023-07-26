@@ -2,12 +2,9 @@ use std::ops::Div;
 
 use nalgebra::{dimension, DMatrix};
 use rustdct::DctPlanner;
-use rustfft::{FftDirection, FftPlanner};
+use rustfft::{num_complex::Complex64, FftDirection, FftPlanner};
 
-use crate::{
-    matrix::{ComplexConversion, ComplexMatrix, Dimension, Matrix, RealMatrix},
-    precision::Complex64,
-};
+use crate::matrix::{ComplexMatrix, Dimension, Matrix, RealMatrix};
 
 #[derive(Clone, Copy)]
 pub enum Transformation {
@@ -71,7 +68,7 @@ impl Transformation {
     }
 
     fn fft1d(dimension: usize) -> ComplexMatrix {
-        Transformation::fft(dimension, FftDirection::Forward).into_complex()
+        Transformation::fft(dimension, FftDirection::Forward)
     }
     fn fft1d_inverse(dimension: usize) -> ComplexMatrix {
         let mut matrix = Transformation::fft(dimension, FftDirection::Inverse);
@@ -79,16 +76,15 @@ impl Transformation {
         let norm = dimension as f64;
         matrix = matrix.unscale(norm);
 
-        matrix.into_complex()
+        matrix.into()
     }
 
-    fn fft(dimension: usize, direction: FftDirection) -> DMatrix<num_complex::Complex64> {
+    fn fft(dimension: usize, direction: FftDirection) -> ComplexMatrix {
         let mut planner = FftPlanner::new();
         let fft = planner.plan_fft(dimension, direction);
 
-        let mut scratch =
-            vec![num_complex::Complex64::new(0.0, 0.0); fft.get_inplace_scratch_len()];
-        let mut matrix = DMatrix::<num_complex::Complex64>::identity(dimension, dimension);
+        let mut scratch = vec![Complex64::new(0.0, 0.0); fft.get_inplace_scratch_len()];
+        let mut matrix = DMatrix::<Complex64>::identity(dimension, dimension);
 
         for mut col in matrix.column_iter_mut() {
             fft.process_with_scratch(col.as_mut_slice(), &mut scratch);
@@ -100,11 +96,10 @@ impl Transformation {
 
 #[cfg(test)]
 mod test {
-    use crate::{matrix::ComplexGetter, precision::Complex64};
     use approx::assert_relative_eq;
     use nalgebra::{DMatrix, DVector};
 
-    use crate::Transformation;
+    use crate::{matrix::MatrixComplexFields, precision::Complex64, Transformation};
 
     const TOLERANCE: f64 = 0.01;
     const N: usize = 4;
@@ -132,7 +127,7 @@ mod test {
 
     #[test]
     fn fft1d() {
-        let t = Transformation::Fourier1d.into_matrix(N);
+        let t = Transformation::fft1d(N);
         println!("FFT1D {}", t);
 
         let inv = Transformation::fft1d_inverse(N);
