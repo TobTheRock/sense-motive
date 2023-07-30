@@ -30,6 +30,7 @@ where
     }
 }
 
+// TODO remove? not sure where we need it actuallzy
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Dimension {
     pub nrows: usize,
@@ -53,7 +54,7 @@ impl Display for Dimension {
     }
 }
 
-#[derive(Debug, From, Display)]
+#[derive(Debug, From, Display, Clone)]
 pub enum Matrix {
     Identity(Dimension),
     Real(RealMatrix),
@@ -64,17 +65,7 @@ impl Mul<Matrix> for Matrix {
     type Output = Matrix;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Matrix::Identity(ldim), Matrix::Identity(rdim)) => Matrix::Identity(ldim.merge(&rdim)),
-            (Matrix::Identity(_), Matrix::Real(matrix)) => matrix.into(),
-            (Matrix::Real(matrix), Matrix::Identity(_)) => matrix.into(),
-            (Matrix::Real(lhs), Matrix::Real(rhs)) => (&lhs * &rhs).into(),
-            (Matrix::Identity(_), Matrix::Complex(matrix)) => matrix.into(),
-            (Matrix::Real(_), Matrix::Complex(_)) => todo!(),
-            (Matrix::Complex(_), Matrix::Identity(matrix)) => matrix.into(),
-            (Matrix::Complex(_), Matrix::Real(_)) => todo!(),
-            (Matrix::Complex(_), Matrix::Complex(_)) => todo!(),
-        }
+        &self * &rhs
     }
 }
 
@@ -84,14 +75,20 @@ impl Mul for &Matrix {
     fn mul(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Matrix::Identity(ldim), Matrix::Identity(rdim)) => Matrix::Identity(ldim.merge(rdim)),
-            (Matrix::Identity(_), Matrix::Real(matrix)) => matrix.clone().into(),
-            (Matrix::Real(matrix), Matrix::Identity(_)) => matrix.clone().into(),
+            (Matrix::Identity(_), matrix) => matrix.clone(),
+            (matrix, Matrix::Identity(_)) => matrix.clone(),
+
             (Matrix::Real(lhs), Matrix::Real(rhs)) => (lhs * rhs).into(),
-            (Matrix::Identity(_), Matrix::Complex(matrix)) => matrix.clone().into(),
-            (Matrix::Real(_), Matrix::Complex(_)) => todo!(),
-            (Matrix::Complex(_), Matrix::Identity(matrix)) => matrix.clone().into(),
-            (Matrix::Complex(_), Matrix::Real(_)) => todo!(),
-            (Matrix::Complex(_), Matrix::Complex(_)) => todo!(),
+            (Matrix::Real(lhs), Matrix::Complex(rhs)) => {
+                let lhs_compex: ComplexMatrix = lhs.to_superset();
+                Matrix::Complex(lhs_compex * rhs)
+            }
+
+            (Matrix::Complex(lhs), Matrix::Real(rhs)) => {
+                let rhs_complex: ComplexMatrix = rhs.to_superset();
+                (lhs * rhs_complex).into()
+            }
+            (Matrix::Complex(lhs), Matrix::Complex(rhs)) => (lhs * rhs).into(),
         }
     }
 }
