@@ -10,24 +10,25 @@ use rand::{
 };
 use sense_motive::{Model, ModelBuilder, Transformation};
 
-const N: usize = 1024;
-const M: usize = 256;
-const K: usize = 16;
+const N: usize = 64;
+const M: usize = 32;
+const K: usize = 8;
 
-const TRANSFORM: Transformation = Transformation::Dct1dInverse;
+const TRANSFORM: Transformation = Transformation::Fourier1dInverse;
 
 fn main() {
     let model = ModelBuilder::new()
         .with_transformation(TRANSFORM)
         .build(M, N);
 
-    let original = match TRANSFORM {
-        Transformation::None => generate_sparse_signal(K),
-        Transformation::Dct1dInverse => generate_cos_signal(K),
-        Transformation::Dct1d => todo!(),
-        Transformation::Fourier1dInverse => todo!(),
-        Transformation::Fourier1d => todo!(),
-    };
+    let original = generate_cos_signal(K);
+    // let original = match TRANSFORM {
+    //     Transformation::None => generate_sparse_signal(K),
+    //     Transformation::Dct1dInverse => generate_cos_signal(K),
+    //     Transformation::Dct1d => todo!(),
+    //     Transformation::Fourier1dInverse => todo!(),
+    //     Transformation::Fourier1d => todo!(),
+    // };
 
     let compressed = model.compress(&original);
     let decompressed = model.decompress(&compressed);

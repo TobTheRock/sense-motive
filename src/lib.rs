@@ -10,6 +10,8 @@ mod complex;
 pub mod matrix;
 pub mod measurement_matrix;
 mod precision;
+// #[cfg(test)]
+pub mod signal_utils;
 pub mod transform_matrix;
 
 pub use transform_matrix::Transformation;
@@ -30,7 +32,6 @@ impl Default for ModelBuilder {
         }
     }
 }
-// TODO maybe don't use const generic so one could store models of dynamic sizes
 pub struct Model {
     algorithm: Algorithm,
     measurement_matrix: Matrix,
@@ -52,11 +53,13 @@ impl ModelBuilder {
         todo!()
     }
 
+    // TODO this is not accessible from the outside, as MatchingPursuitSolver is private!
     pub fn with_algorithm(&mut self, algorithm: Algorithm) -> &mut Self {
         self.algorithm = algorithm;
         self
     }
 
+    // TODO move dimensions to new method (rename also)
     pub fn build(&self, size_compressed: usize, size_original: usize) -> Model {
         let measurement = MeasurementMatrix::Bernoulli.into_matrix(size_compressed, size_original);
         let transform = self.transform.into_matrix(size_original);
