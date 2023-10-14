@@ -1,6 +1,6 @@
 extern crate derive_more;
 
-use algorithm::{matching_pursuit::MatchingPursuitSolver, Algorithm};
+use algorithm::Algorithm;
 use complex::ComplexFields;
 use matrix::Matrix;
 use measurement_matrix::MeasurementMatrix;
@@ -10,6 +10,8 @@ mod complex;
 pub mod matrix;
 pub mod measurement_matrix;
 mod precision;
+
+// TODO test crate for signal_utils
 // #[cfg(test)]
 pub mod signal_utils;
 pub mod transform_matrix;
@@ -24,10 +26,7 @@ pub struct ModelBuilder {
 impl Default for ModelBuilder {
     fn default() -> Self {
         Self {
-            // TODO impl default for matching pursuit
-            algorithm: Algorithm::MatchingPursuit(MatchingPursuitSolver::with_parameters(
-                1000, 0.1,
-            )),
+            algorithm: Default::default(),
             transform: Transformation::None,
         }
     }

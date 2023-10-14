@@ -42,6 +42,7 @@ impl Transformation {
         }
 
         // normalize
+        // TODO checkout Nmatrix unit
         matrix = matrix.unscale(f64::sqrt(dimension as f64 / 2.0));
 
         matrix.into()
